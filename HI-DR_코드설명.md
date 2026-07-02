@@ -68,7 +68,7 @@
 ### 입력 데이터 (`records_final.pkl`)
 
 ```
-전체 환자 리스트 (6,350명, 2회 이상 입원만 사용)
+전체 환자 리스트 (5,442명, 2회 이상 입원만 사용)
 └── 환자
     └── 입원 visit (방문 횟수만큼)
         ├── [0]: 진단 코드 리스트  (ICD-9, 최대 39개)
@@ -171,7 +171,7 @@ epoch_saved_patient_embedding.append(query)
 ├── concat_embedding          진단+시술 → 공유 임베딩 (emb_dim=64)
 ├── Gumbel Softmax            관련 과거 방문 이진 선택
 ├── Health Status-Aware Attn  현재 상태 기반 방문별 가중치 계산
-├── TwoLayerDirectedGCN       EHR Graph+ → 약물 임베딩 (ehr_embedding)
+├── DirectedGCNConv (1-layer) EHR Graph+ → 약물 임베딩 (ehr_embedding)
 ├── GCN (DDI)                 DDI Graph → 약물 임베딩 (ddi_embedding)
 └── Drug Memory = ehr_embedding - λ * ddi_embedding
         ↓
@@ -264,7 +264,7 @@ scores = softmax(diag_scores / att_tau, dim=-1)
 
 ### 6.4 EHR Graph+ (Directed GCN)
 
-**코드**: `HEIDR_model.py` `TwoLayerDirectedGCN`, `DirectedGCNConv`
+**코드**: `HEIDR_model.py` `DirectedGCNConv` (실제 사용, 1-layer) — `TwoLayerDirectedGCN`(2-layer)도 같은 파일에 정의되어 있으나 현재 `self.ehr_direct_gcn`은 이걸 쓰지 않음
 
 ```python
 class DirectedGCNConv(MessagePassing):
@@ -286,6 +286,8 @@ class DirectedGCNConv(MessagePassing):
 - **출력**: ehr_embedding (131 약물 × 64차원)
 
 **기존 VITA의 GCN과의 차이**: VITA는 단순 대칭 인접 행렬(`ehr_adj`)을 사용하지만, HEIDR는 방향성+가중치가 있는 그래프를 사용 → 더 풍부한 임상 관계 포착
+
+> **참고**: 저자의 개선 의도는 2-layer `TwoLayerDirectedGCN`이지만, 배포된 체크포인트가 1-layer로 학습되어 있어 현재 코드는 `DirectedGCNConv` 1-layer로 되돌려져 있음 (자세한 내용은 `HI-DR_실험결과_보고서.md`의 Bug 3 참고).
 
 ---
 
